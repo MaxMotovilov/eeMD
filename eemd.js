@@ -5,7 +5,7 @@
 //
 (function(win,doc){
 
-	var pending = {}, loaded = {};
+	var pending = {}, loaded = { require: 1, module: 1 };
 
 	win.define = function( name, deps, body ) {
 		if( name in loaded )
@@ -14,42 +14,45 @@
 		loaded[name] = [ deps, body ];
 
 		(pending[name] || [])
-			.forEach( function(cb) { cb() } );
+			.forEach( function(cb) { cb( deps ) } );
 
 		delete pending[name]
 	}
 
 	function require_config( config ) {
 
-		var ready = {},
-			require = _require.bind( null, load );
+		var require = _require.bind( null, load ),
+			ready = { require: require, module: 1 };
 
 		require.config = require_config;
 		require.bundled = _require.bind( null, 0 );
 
 		return require;
 
-		function _require( load, deps, cb ) {
+		function _require( load, module_dependencies, cb ) {
 
-			var count = 1 + deps.filter( function( dep ) { 
-							return !( dep in loaded || 
-									  (pending[dep] || (pending[dep]=[])).push( trigger )
-									  	&& load && load( dep ) 
-									)
-						} ).length;
+			var count = 1;
 
-			trigger();
+			provide( module_dependencies );
 
-			function trigger() {
-				if( --count == 0 )
-					cb.apply( null, deps.map( init ) );
+			function provide( deps ) {
+				if( !(count += deps.filter( 
+							function( dep ) { 
+								return !( dep in loaded || 
+										  (pending[dep] || (pending[dep]=[])).push( provide )
+										  	&& load && load( dep ) 
+										)
+							} 
+				          ).length - 1)
+				)
+					cb.apply( null, module_dependencies.map( init ) );
 			}
 		}
 
 		function init( mdl ) {
 			var deps, body, cfg;
 
-			return ready[mdl] || (ready[mdl] = (
+			return  ready[mdl] || (ready[mdl] = (
 						deps = loaded[mdl][0].map( initDependency ),
 					  	typeof (body = loaded[mdl][1]) == 'function'
 							? body.apply( null, deps )
@@ -57,8 +60,8 @@
 				   	))
 
 			function initDependency( dep ) {
-				return dep == "require" ? require
-					   : dep == "module" ? { 
+				return dep == "module" 
+					   ? { 
 							config: function() { 
 								return cfg || matchPath( config.config, mdl, function( val ) { return cfg = val || {} } )
 							},
