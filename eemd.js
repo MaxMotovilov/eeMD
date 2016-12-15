@@ -38,10 +38,12 @@
 			function provide( deps ) {
 				if( !(count += deps.filter( 
 							function( dep ) { 
-								return !( dep in loaded || 
-										  (pending[dep] || (pending[dep]=[])).push( provide )
-										  	&& load && load( dep ) 
-										)
+								return !(dep in loaded) && (
+											pending[dep] || ( 
+												load && load( dep ),
+												pending[dep]=[] 
+											)
+										).push( provide )
 							} 
 				          ).length - 1)
 				)
