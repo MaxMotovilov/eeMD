@@ -7,7 +7,7 @@
 
 	var pending = {}, loaded = { require: 1, module: 1 };
 
-	win.define = function( name, deps, body ) {
+	(win.define = function( name, deps, body ) {
 		if( name in loaded )
 			throw Error( "Already defined: " + name );
 
@@ -17,7 +17,7 @@
 			.forEach( function(cb) { cb( deps ) } );
 
 		delete pending[name]
-	}
+	}).amd={}
 
 	function require_config( config ) {
 
